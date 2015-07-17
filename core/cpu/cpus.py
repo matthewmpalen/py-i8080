@@ -162,7 +162,7 @@ class CPU(Thread):
             Opcode.MOV_M_H: instr.MOVInstruction(self), 
             Opcode.MOV_M_L: instr.MOVInstruction(self), 
 
-            Opcode.HLT: instr.HLTInstruction(self), 
+            Opcode.HLT:     instr.HLTInstruction(self), 
 
             Opcode.MOV_M_A: instr.MOVInstruction(self), 
             Opcode.MOV_A_B: instr.MOVInstruction(self), 
@@ -174,14 +174,14 @@ class CPU(Thread):
             Opcode.MOV_A_M: instr.MOVInstruction(self), 
             Opcode.MOV_A_A: instr.MOVInstruction(self), 
 
-            0x80: instr.ADDInstruction(self), 
-            0x81: instr.ADDInstruction(self), 
-            0x82: instr.ADDInstruction(self), 
-            0x83: instr.ADDInstruction(self), 
-            0x84: instr.ADDInstruction(self), 
-            0x85: instr.ADDInstruction(self), 
-            0x86: instr.ADDInstruction(self), 
-            0x87: instr.ADDInstruction(self),
+            Opcode.ADD_B:   instr.ADDInstruction(self), 
+            Opcode.ADD_C:   instr.ADDInstruction(self), 
+            Opcode.ADD_D:   instr.ADDInstruction(self), 
+            Opcode.ADD_E:   instr.ADDInstruction(self), 
+            Opcode.ADD_H:   instr.ADDInstruction(self), 
+            Opcode.ADD_L:   instr.ADDInstruction(self), 
+            Opcode.ADD_M:   instr.ADDInstruction(self), 
+            Opcode.ADD_A:   instr.ADDInstruction(self),
 
             0x88: instr.ADCInstruction(self), 
             0x89: instr.ADCInstruction(self), 
