@@ -1,39 +1,30 @@
 # Python
 from threading import Thread
 
-# External
-from numpy import uint8
-
 # Local
 import core.cpu.instructions as instr
 from core.opcodes import Opcode
-from .flags import Flag
+from .flags import ConditionFlags
 from .registers import Register
 
 class CPU(Thread):
     def __init__(self, *args, **kwargs):
         Thread.__init__(self, *args, **kwargs)
-        self._registers = {
-            'a': Register(uint8), 
-            'b': Register(uint8), 
-            'c': Register(uint8), 
-            'd': Register(uint8), 
-            'e': Register(uint8), 
-            'h': Register(uint8), 
-            'l': Register(uint8)
-        }
 
-        self._flags = {
-            's': Flag(uint8), 
-            'z': Flag(uint8), 
-            'p': Flag(uint8), 
-            'c': Flag(uint8), 
-            'ac': Flag(uint8), 
-            'pad': Flag(uint8)
-        }
+        self._a = Register()
+        self._b = Register()
+        self._c = Register()
+        self._d = Register()
+        self._e = Register()
+        self._h = Register()
+        self._l = Register()
 
-        self._sp = Register(uint8)
-        self._pc = Register(uint8)
+        self._condition_flags = ConditionFlags()
+
+        self._sp = Register()
+        self._pc = Register()
+
+        self._data = None
 
         self._instructions = {
             Opcode.NOP:         instr.NOPInstruction(self), 
@@ -257,7 +248,7 @@ class CPU(Thread):
             Opcode.RZ:          instr.RZInstruction(self), 
             Opcode.RET:         instr.RETInstruction(self), 
             Opcode.JZ:          instr.JZInstruction(self), 
-            Opcode.JUMP_CB:     instr.JMPInstruction(self), 
+            Opcode.JMP_CB:     instr.JMPInstruction(self), 
             Opcode.CZ:          instr.CZInstruction(self), 
             Opcode.CALL:        instr.CALLInstruction(self), 
             Opcode.ACI:         instr.ACIInstruction(self), 
@@ -315,5 +306,19 @@ class CPU(Thread):
             Opcode.RST_7:       instr.RSTInstruction(self) 
         }
 
+    def _fetch_instruction(self):
+        pass
+
+    def _execute(self, opcode):
+        self._instructions[opcode]()
+
+    def incrementProgramCounter(self, value):
+        self._pc.increment(value)
+
+    def load(self, rom):
+        self._data = rom
+
     def run(self):
         print('Running CPU')
+        while True:
+            self._execute(self._pc.read())
