@@ -3,6 +3,6 @@ class ConditionFlags(object):
         self.s = False
         self.z = False
         self.p = False
-        self.c = False
+        self.cy = False
         self.ac = False
         self.pad = False
