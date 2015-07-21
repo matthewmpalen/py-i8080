@@ -1,4 +1,5 @@
 # Python
+import logging
 from threading import Thread
 
 # External
@@ -12,32 +13,33 @@ from .memory import Memory
 from .registers import RegID, DRegID, Registers
 
 class CPU(Thread):
+    logger = logging.getLogger('CPU')
+
     def __init__(self, *args, **kwargs):
         Thread.__init__(self, *args, **kwargs)
 
         self.registers = Registers()
         self.condition_flags = ConditionFlags()
         self.ram = Memory()
-        self.stack_pointer = uint16(0)
-        self.program_counter = uint16(0)
-
-        self._data = None
+        self._stack_pointer = uint16(0)
+        self._program_counter = uint16(0)
+        self._data = bytearray(10)
 
         self._instructions = {
             Opcode.NOP:         instr.NOPInstruction(self), 
             Opcode.LXI_B:       instr.LXIInstruction(self), 
             Opcode.STAX_B:      instr.STAXInstruction(self), 
             Opcode.INX_B:       instr.INXInstruction(self, DRegID.BC), 
-            Opcode.INR_B:       instr.INRInstruction(self), 
-            Opcode.DCR_B:       instr.DCRInstruction(self), 
+            Opcode.INR_B:       instr.INRInstruction(self, RegID.B), 
+            Opcode.DCR_B:       instr.DCRInstruction(self, RegID.B), 
             Opcode.MVI_B:       instr.MVIInstruction(self), 
             Opcode.RLC:         instr.RLCInstruction(self), 
             Opcode.NOP_8:       instr.NOPInstruction(self), 
             Opcode.DAD_B:       instr.DADInstruction(self, DRegID.BC), 
             Opcode.LDAX_B:      instr.LDAXInstruction(self), 
             Opcode.DCX_B:       instr.DCXInstruction(self, DRegID.BC), 
-            Opcode.INR_C:       instr.INRInstruction(self), 
-            Opcode.DCR_C:       instr.DCRInstruction(self), 
+            Opcode.INR_C:       instr.INRInstruction(self, RegID.C), 
+            Opcode.DCR_C:       instr.DCRInstruction(self, RegID.C), 
             Opcode.MVI_C:       instr.MVIInstruction(self), 
             Opcode.RRC:         instr.RRCInstruction(self), 
 
@@ -45,16 +47,16 @@ class CPU(Thread):
             Opcode.LXI_D:       instr.LXIInstruction(self), 
             Opcode.STAX_D:      instr.STAXInstruction(self), 
             Opcode.INX_D:       instr.INXInstruction(self, DRegID.DE), 
-            Opcode.INR_D:       instr.INRInstruction(self), 
-            Opcode.DCR_D:       instr.DCRInstruction(self), 
+            Opcode.INR_D:       instr.INRInstruction(self, RegID.D), 
+            Opcode.DCR_D:       instr.DCRInstruction(self, RegID.D), 
             Opcode.MVI_D:       instr.MVIInstruction(self), 
             Opcode.RAL:         instr.RALInstruction(self), 
             Opcode.NOP_18:      instr.NOPInstruction(self), 
             Opcode.DAD_D:       instr.DADInstruction(self, DRegID.DE), 
             Opcode.LDAX_D:      instr.LDAXInstruction(self), 
             Opcode.DCX_D:       instr.DCXInstruction(self, DRegID.DE), 
-            Opcode.INR_E:       instr.INRInstruction(self), 
-            Opcode.DCR_E:       instr.DCRInstruction(self), 
+            Opcode.INR_E:       instr.INRInstruction(self, RegID.E), 
+            Opcode.DCR_E:       instr.DCRInstruction(self, RegID.E), 
             Opcode.MVI_E:       instr.MVIInstruction(self), 
             Opcode.RAR:         instr.RARInstruction(self), 
 
@@ -62,16 +64,16 @@ class CPU(Thread):
             Opcode.LXI_H:       instr.LXIInstruction(self), 
             Opcode.SHLD:        instr.SHLDInstruction(self), 
             Opcode.INX_H:       instr.INXInstruction(self, DRegID.HL), 
-            Opcode.INR_H:       instr.INRInstruction(self), 
-            Opcode.DCR_H:       instr.DCRInstruction(self), 
+            Opcode.INR_H:       instr.INRInstruction(self, RegID.H), 
+            Opcode.DCR_H:       instr.DCRInstruction(self, RegID.H), 
             Opcode.MVI_H:       instr.MVIInstruction(self), 
             Opcode.DAA:         instr.DAAInstruction(self), 
             Opcode.NOP_28:      instr.NOPInstruction(self), 
             Opcode.DAD_H:       instr.DADInstruction(self, DRegID.HL), 
             Opcode.LHLD:        instr.LHLDInstruction(self), 
             Opcode.DCX_H:       instr.DCXInstruction(self, DRegID.HL), 
-            Opcode.INR_L:       instr.INRInstruction(self), 
-            Opcode.DCR_L:       instr.DCRInstruction(self), 
+            Opcode.INR_L:       instr.INRInstruction(self, RegID.L), 
+            Opcode.DCR_L:       instr.DCRInstruction(self, RegID.L), 
             Opcode.MVI_L:       instr.MVIInstruction(self), 
             Opcode.CMA:         instr.CMAInstruction(self), 
 
@@ -79,16 +81,16 @@ class CPU(Thread):
             Opcode.LXI_SP:      instr.LXIInstruction(self), 
             Opcode.STA:         instr.STAInstruction(self), 
             Opcode.INX_SP:      instr.INXInstruction(self, DRegID.SP), 
-            Opcode.INR_M:       instr.INRInstruction(self), 
-            Opcode.DCR_M:       instr.DCRInstruction(self), 
+            Opcode.INR_M:       instr.INRInstruction(self, DRegID.M), 
+            Opcode.DCR_M:       instr.DCRInstruction(self, DRegID.M), 
             Opcode.MVI_M:       instr.MVIInstruction(self), 
             Opcode.STC:         instr.STCInstruction(self), 
             Opcode.NOP_38:      instr.NOPInstruction(self), 
             Opcode.DAD_SP:      instr.DADInstruction(self, DRegID.SP), 
             Opcode.LDA:         instr.LDAInstruction(self), 
             Opcode.DCX_SP:      instr.DCXInstruction(self, DRegID.SP), 
-            Opcode.INR_A:       instr.INRInstruction(self), 
-            Opcode.DCR_A:       instr.DCRInstruction(self), 
+            Opcode.INR_A:       instr.INRInstruction(self, RegID.A), 
+            Opcode.DCR_A:       instr.DCRInstruction(self, RegID.A), 
             Opcode.MVI_A:       instr.MVIInstruction(self), 
             Opcode.CMC:         instr.CMCInstruction(self), 
 
@@ -303,22 +305,43 @@ class CPU(Thread):
             Opcode.RST_7:       instr.RSTInstruction(self) 
         }
 
-    def _debug(self):
-        print('a={0:x}, b={1:x}'.format(
-            self.registers.get(RegID.A), 
-            self.registers.get(RegID.B))
-        )
-
     def _execute(self, opcode):
         self._instructions[opcode]()
 
-    def getNextByte(self):
-        return self._data[self.program_counter + 1]
+    def get_next_byte(self):
+        return self._data[self._program_counter + uint16(1)]
 
-    def getNextDoubleByte():
-        start = self.registers['pc'].read() + 1
-        end = start + 2
+    def get_next_double_byte(self):
+        start = self._program_counter + uint16(1)
+        end = start + uint16(2)
         return struct.unpack('<H', self._data[start:end])[0]
+
+    def get_stack_pointer(self):
+        return self._stack_pointer
+
+    def increment_stack_pointer(self, value):
+        if value < 0:
+            raise ValueError('Must be a positive value')
+
+        self._stack_pointer += uint16(value) 
+
+    def decrement_stack_pointer(self, value):
+        if value < 0:
+            raise ValueError('Must be a positive value')
+
+        self._stack_pointer -= uint16(value)
+
+    def increment_program_counter(self, value):
+        if value < 0:
+            raise ValueError('Must be a positive value')
+
+        self._program_counter += uint16(value)
+
+    def decrement_program_counter(self, value):
+        if value < 0:
+            raise ValueError('Must be a positive value')
+
+        self._program_counter -= uint16(value)
 
     def load(self, rom):
         self._data = rom
@@ -326,5 +349,19 @@ class CPU(Thread):
     def run(self):
         print('Running CPU')
         while True:
-            self._execute(self.program_counter)
-            self._debug()
+            self._execute(self._program_counter)
+            CPU.logger.info(
+                '\na={0:x}, b={1:x}, c={2:x}, d={3:x}, e={4:x}, h={5:x}, l={6:x}\ns={7}, z={8}, cy={9}, p={10}'.format(
+                self.registers.get(RegID.A), 
+                self.registers.get(RegID.B), 
+                self.registers.get(RegID.C), 
+                self.registers.get(RegID.D), 
+                self.registers.get(RegID.E), 
+                self.registers.get(RegID.H), 
+                self.registers.get(RegID.L), 
+                self.condition_flags.s, 
+                self.condition_flags.z, 
+                self.condition_flags.cy, 
+                self.condition_flags.p)
+            )
+
