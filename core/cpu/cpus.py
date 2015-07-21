@@ -1,28 +1,25 @@
 # Python
 from threading import Thread
 
+# External
+from numpy import uint16
+
 # Local
 import core.cpu.instructions as instr
 from core.opcodes import Opcode
 from .flags import ConditionFlags
-from .registers import Register
+from .memory import Memory
+from .registers import RegID, DRegID, Registers
 
 class CPU(Thread):
     def __init__(self, *args, **kwargs):
         Thread.__init__(self, *args, **kwargs)
 
-        self._a = Register()
-        self._b = Register()
-        self._c = Register()
-        self._d = Register()
-        self._e = Register()
-        self._h = Register()
-        self._l = Register()
-
-        self._condition_flags = ConditionFlags()
-
-        self._sp = Register()
-        self._pc = Register()
+        self.registers = Registers()
+        self.condition_flags = ConditionFlags()
+        self.ram = Memory()
+        self.stack_pointer = uint16(0)
+        self.program_counter = uint16(0)
 
         self._data = None
 
@@ -30,15 +27,15 @@ class CPU(Thread):
             Opcode.NOP:         instr.NOPInstruction(self), 
             Opcode.LXI_B:       instr.LXIInstruction(self), 
             Opcode.STAX_B:      instr.STAXInstruction(self), 
-            Opcode.INX_B:       instr.INXInstruction(self), 
+            Opcode.INX_B:       instr.INXInstruction(self, DRegID.BC), 
             Opcode.INR_B:       instr.INRInstruction(self), 
             Opcode.DCR_B:       instr.DCRInstruction(self), 
             Opcode.MVI_B:       instr.MVIInstruction(self), 
             Opcode.RLC:         instr.RLCInstruction(self), 
             Opcode.NOP_8:       instr.NOPInstruction(self), 
-            Opcode.DAD_B:       instr.DADInstruction(self), 
+            Opcode.DAD_B:       instr.DADInstruction(self, DRegID.BC), 
             Opcode.LDAX_B:      instr.LDAXInstruction(self), 
-            Opcode.DCX_B:       instr.DCXInstruction(self), 
+            Opcode.DCX_B:       instr.DCXInstruction(self, DRegID.BC), 
             Opcode.INR_C:       instr.INRInstruction(self), 
             Opcode.DCR_C:       instr.DCRInstruction(self), 
             Opcode.MVI_C:       instr.MVIInstruction(self), 
@@ -47,15 +44,15 @@ class CPU(Thread):
             Opcode.NOP_10:      instr.NOPInstruction(self), 
             Opcode.LXI_D:       instr.LXIInstruction(self), 
             Opcode.STAX_D:      instr.STAXInstruction(self), 
-            Opcode.INX_D:       instr.INXInstruction(self), 
+            Opcode.INX_D:       instr.INXInstruction(self, DRegID.DE), 
             Opcode.INR_D:       instr.INRInstruction(self), 
             Opcode.DCR_D:       instr.DCRInstruction(self), 
             Opcode.MVI_D:       instr.MVIInstruction(self), 
             Opcode.RAL:         instr.RALInstruction(self), 
             Opcode.NOP_18:      instr.NOPInstruction(self), 
-            Opcode.DAD_D:       instr.DADInstruction(self), 
+            Opcode.DAD_D:       instr.DADInstruction(self, DRegID.DE), 
             Opcode.LDAX_D:      instr.LDAXInstruction(self), 
-            Opcode.DCX_D:       instr.DCXInstruction(self), 
+            Opcode.DCX_D:       instr.DCXInstruction(self, DRegID.DE), 
             Opcode.INR_E:       instr.INRInstruction(self), 
             Opcode.DCR_E:       instr.DCRInstruction(self), 
             Opcode.MVI_E:       instr.MVIInstruction(self), 
@@ -64,15 +61,15 @@ class CPU(Thread):
             Opcode.NOP_20:      instr.NOPInstruction(self), 
             Opcode.LXI_H:       instr.LXIInstruction(self), 
             Opcode.SHLD:        instr.SHLDInstruction(self), 
-            Opcode.INX_H:       instr.INXInstruction(self), 
+            Opcode.INX_H:       instr.INXInstruction(self, DRegID.HL), 
             Opcode.INR_H:       instr.INRInstruction(self), 
             Opcode.DCR_H:       instr.DCRInstruction(self), 
             Opcode.MVI_H:       instr.MVIInstruction(self), 
             Opcode.DAA:         instr.DAAInstruction(self), 
             Opcode.NOP_28:      instr.NOPInstruction(self), 
-            Opcode.DAD_H:       instr.DADInstruction(self), 
+            Opcode.DAD_H:       instr.DADInstruction(self, DRegID.HL), 
             Opcode.LHLD:        instr.LHLDInstruction(self), 
-            Opcode.DCX_H:       instr.DCXInstruction(self), 
+            Opcode.DCX_H:       instr.DCXInstruction(self, DRegID.HL), 
             Opcode.INR_L:       instr.INRInstruction(self), 
             Opcode.DCR_L:       instr.DCRInstruction(self), 
             Opcode.MVI_L:       instr.MVIInstruction(self), 
@@ -81,15 +78,15 @@ class CPU(Thread):
             Opcode.NOP_30:      instr.NOPInstruction(self), 
             Opcode.LXI_SP:      instr.LXIInstruction(self), 
             Opcode.STA:         instr.STAInstruction(self), 
-            Opcode.INX_SP:      instr.INXInstruction(self), 
+            Opcode.INX_SP:      instr.INXInstruction(self, DRegID.SP), 
             Opcode.INR_M:       instr.INRInstruction(self), 
             Opcode.DCR_M:       instr.DCRInstruction(self), 
             Opcode.MVI_M:       instr.MVIInstruction(self), 
             Opcode.STC:         instr.STCInstruction(self), 
             Opcode.NOP_38:      instr.NOPInstruction(self), 
-            Opcode.DAD_SP:      instr.DADInstruction(self), 
+            Opcode.DAD_SP:      instr.DADInstruction(self, DRegID.SP), 
             Opcode.LDA:         instr.LDAInstruction(self), 
-            Opcode.DCX_SP:      instr.DCXInstruction(self), 
+            Opcode.DCX_SP:      instr.DCXInstruction(self, DRegID.SP), 
             Opcode.INR_A:       instr.INRInstruction(self), 
             Opcode.DCR_A:       instr.DCRInstruction(self), 
             Opcode.MVI_A:       instr.MVIInstruction(self), 
@@ -165,41 +162,41 @@ class CPU(Thread):
             Opcode.MOV_A_M:     instr.MOVInstruction(self), 
             Opcode.MOV_A_A:     instr.MOVInstruction(self), 
 
-            Opcode.ADD_B:       instr.ADDInstruction(self), 
-            Opcode.ADD_C:       instr.ADDInstruction(self), 
-            Opcode.ADD_D:       instr.ADDInstruction(self), 
-            Opcode.ADD_E:       instr.ADDInstruction(self), 
-            Opcode.ADD_H:       instr.ADDInstruction(self), 
-            Opcode.ADD_L:       instr.ADDInstruction(self), 
-            Opcode.ADD_M:       instr.ADDInstruction(self), 
-            Opcode.ADD_A:       instr.ADDInstruction(self),
+            Opcode.ADD_B:       instr.ADDInstruction(self, RegID.B), 
+            Opcode.ADD_C:       instr.ADDInstruction(self, RegID.C), 
+            Opcode.ADD_D:       instr.ADDInstruction(self, RegID.D), 
+            Opcode.ADD_E:       instr.ADDInstruction(self, RegID.E), 
+            Opcode.ADD_H:       instr.ADDInstruction(self, RegID.H), 
+            Opcode.ADD_L:       instr.ADDInstruction(self, RegID.L), 
+            Opcode.ADD_M:       instr.ADDInstruction(self, DRegID.M), 
+            Opcode.ADD_A:       instr.ADDInstruction(self, RegID.A),
 
-            Opcode.ADC_B:       instr.ADCInstruction(self), 
-            Opcode.ADC_C:       instr.ADCInstruction(self), 
-            Opcode.ADC_D:       instr.ADCInstruction(self), 
-            Opcode.ADC_E:       instr.ADCInstruction(self), 
-            Opcode.ADC_H:       instr.ADCInstruction(self), 
-            Opcode.ADC_L:       instr.ADCInstruction(self), 
-            Opcode.ADC_M:       instr.ADCInstruction(self), 
-            Opcode.ADC_A:       instr.ADCInstruction(self), 
+            Opcode.ADC_B:       instr.ADCInstruction(self, RegID.B), 
+            Opcode.ADC_C:       instr.ADCInstruction(self, RegID.C), 
+            Opcode.ADC_D:       instr.ADCInstruction(self, RegID.D), 
+            Opcode.ADC_E:       instr.ADCInstruction(self, RegID.E), 
+            Opcode.ADC_H:       instr.ADCInstruction(self, RegID.H), 
+            Opcode.ADC_L:       instr.ADCInstruction(self, RegID.L), 
+            Opcode.ADC_M:       instr.ADCInstruction(self, DRegID.M), 
+            Opcode.ADC_A:       instr.ADCInstruction(self, RegID.A), 
 
-            Opcode.SUB_B:       instr.SUBInstruction(self), 
-            Opcode.SUB_C:       instr.SUBInstruction(self), 
-            Opcode.SUB_D:       instr.SUBInstruction(self), 
-            Opcode.SUB_E:       instr.SUBInstruction(self), 
-            Opcode.SUB_H:       instr.SUBInstruction(self), 
-            Opcode.SUB_L:       instr.SUBInstruction(self), 
-            Opcode.SUB_M:       instr.SUBInstruction(self), 
-            Opcode.SUB_A:       instr.SUBInstruction(self), 
+            Opcode.SUB_B:       instr.SUBInstruction(self, RegID.B), 
+            Opcode.SUB_C:       instr.SUBInstruction(self, RegID.C), 
+            Opcode.SUB_D:       instr.SUBInstruction(self, RegID.D), 
+            Opcode.SUB_E:       instr.SUBInstruction(self, RegID.E), 
+            Opcode.SUB_H:       instr.SUBInstruction(self, RegID.H), 
+            Opcode.SUB_L:       instr.SUBInstruction(self, RegID.L), 
+            Opcode.SUB_M:       instr.SUBInstruction(self, DRegID.M), 
+            Opcode.SUB_A:       instr.SUBInstruction(self, RegID.A), 
 
-            Opcode.SBB_B:       instr.SBBInstruction(self), 
-            Opcode.SBB_C:       instr.SBBInstruction(self), 
-            Opcode.SBB_D:       instr.SBBInstruction(self), 
-            Opcode.SBB_E:       instr.SBBInstruction(self), 
-            Opcode.SBB_H:       instr.SBBInstruction(self), 
-            Opcode.SBB_L:       instr.SBBInstruction(self), 
-            Opcode.SBB_M:       instr.SBBInstruction(self), 
-            Opcode.SBB_A:       instr.SBBInstruction(self), 
+            Opcode.SBB_B:       instr.SBBInstruction(self, RegID.B), 
+            Opcode.SBB_C:       instr.SBBInstruction(self, RegID.C), 
+            Opcode.SBB_D:       instr.SBBInstruction(self, RegID.D), 
+            Opcode.SBB_E:       instr.SBBInstruction(self, RegID.E), 
+            Opcode.SBB_H:       instr.SBBInstruction(self, RegID.H), 
+            Opcode.SBB_L:       instr.SBBInstruction(self, RegID.L), 
+            Opcode.SBB_M:       instr.SBBInstruction(self, DRegID.M), 
+            Opcode.SBB_A:       instr.SBBInstruction(self, RegID.A), 
 
             Opcode.ANA_B:       instr.ANAInstruction(self), 
             Opcode.ANA_C:       instr.ANAInstruction(self), 
@@ -248,7 +245,7 @@ class CPU(Thread):
             Opcode.RZ:          instr.RZInstruction(self), 
             Opcode.RET:         instr.RETInstruction(self), 
             Opcode.JZ:          instr.JZInstruction(self), 
-            Opcode.JMP_CB:     instr.JMPInstruction(self), 
+            Opcode.JMP_CB:      instr.JMPInstruction(self), 
             Opcode.CZ:          instr.CZInstruction(self), 
             Opcode.CALL:        instr.CALLInstruction(self), 
             Opcode.ACI:         instr.ACIInstruction(self), 
@@ -306,14 +303,22 @@ class CPU(Thread):
             Opcode.RST_7:       instr.RSTInstruction(self) 
         }
 
-    def _fetch_instruction(self):
-        pass
+    def _debug(self):
+        print('a={0:x}, b={1:x}'.format(
+            self.registers.get(RegID.A), 
+            self.registers.get(RegID.B))
+        )
 
     def _execute(self, opcode):
         self._instructions[opcode]()
 
-    def incrementProgramCounter(self, value):
-        self._pc.increment(value)
+    def getNextByte(self):
+        return self._data[self.program_counter + 1]
+
+    def getNextDoubleByte():
+        start = self.registers['pc'].read() + 1
+        end = start + 2
+        return struct.unpack('<H', self._data[start:end])[0]
 
     def load(self, rom):
         self._data = rom
@@ -321,4 +326,5 @@ class CPU(Thread):
     def run(self):
         print('Running CPU')
         while True:
-            self._execute(self._pc.read())
+            self._execute(self.program_counter)
+            self._debug()

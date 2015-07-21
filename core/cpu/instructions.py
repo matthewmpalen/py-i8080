@@ -1,3 +1,16 @@
+from numpy import int16, uint16
+
+from .registers import RegID, DRegID
+
+def get_bit(value, index):
+    return (0 != (value & (1 << index)))
+
+def sign_bit(value):
+    return get_bit(value, 7)
+
+def parity_bit(value):
+    return (bin(value).count('1') % 2) == 0
+
 class UnhandledInstructionError(Exception):
     pass
 
@@ -7,22 +20,73 @@ class Instruction(object):
         self._size = 1
 
     def __call__(self):
-        self._cpu.incrementProgramCounter(self._size)
+        self._cpu.program_counter += self._size
 
 class ACIInstruction(Instruction):
     def __init__(self, *args, **kwargs):
         super(ACIInstruction, self).__init__(*args, **kwargs)
         self._size = 2
-
+    
     def __call__(self, *args, **kwargs):
+        immediate = self._cpu.getNextByte()
+        answer = (
+            self._cpu.registers.get(RegID.A) + 
+            immediate + 
+            self._cpu.condition_flags.cy
+        )
+
+        self._cpu.condition_flags.z = bool(answer)
+        self._cpu.condition_flags.s = sign_bit(answer)
+        self._cpu.condition_flags.cy = answer > 0xff
+        self._cpu.p = parity_bit(answer)
+        self._cpu.registers.set(RegID.A, answer)
+       
         super(ACIInstruction, self).__call__(*args, **kwargs)
 
 class ADDInstruction(Instruction):
+    def __init__(self, cpu, register):
+        super(ADDInstruction, self).__init__(cpu)
+
+        if register != DRegID.M:
+            self._addend = self._cpu.registers.get(register)
+        else:
+            address = self._cpu.registers.get_pair(DRegID.HL)
+            self._addend = self._cpu.ram.read(address)
+    
     def __call__(self, *args, **kwargs):
+        answer = self._cpu.registers.get(RegID.A) + self._addend
+
+        self._cpu.condition_flags.z = bool(answer)
+        self._cpu.condition_flags.s = sign_bit(answer)
+        self._cpu.condition_flags.cy = answer > 0xff
+        self._cpu.p = parity_bit(answer)
+        self._cpu.registers.set(RegID.A, answer)
+
         super(ADDInstruction, self).__call__(*args, **kwargs)
 
 class ADCInstruction(Instruction):
+    def __init__(self, cpu, register):
+        super(ADCInstruction, self).__init__(cpu)
+
+        if register != 'm':
+            self._addend = self._cpu.registers.get(register)
+        else:
+            address = self._cpu.registers.get_pair(DRegID.HL)
+            self._addend = self._cpu.ram.read(address)
+
     def __call__(self, *args, **kwargs):
+        answer = (
+            self._cpu.registers.get(RegID.A) + 
+            self._addend + 
+            self._cpu.condition_flags.cy
+        )
+
+        self._cpu.condition_flags.z = bool(answer)
+        self._cpu.condition_flags.s = sign_bit(answer)
+        self._cpu.condition_flags.cy = answer > 0xff
+        self._cpu.p = parity_bit(answer)
+        self._cpu.registers.set(RegID.A, answer)
+
         super(ADCInstruction, self).__call__(*args, **kwargs)
 
 class ADIInstruction(Instruction):
@@ -31,6 +95,15 @@ class ADIInstruction(Instruction):
         self._size = 2
     
     def __call__(self, *args, **kwargs):
+        immediate = self._cpu.getNextByte()
+        answer = self._cpu.registers.get(RegID.A) + immediate
+
+        self._cpu.condition_flags.z = bool(answer)
+        self._cpu.condition_flags.s = sign_bit(answer)
+        self._cpu.condition_flags.cy = answer > 0xff
+        self._cpu.p = parity_bit(answer)
+        self._cpu.registers.set(RegID.A, answer)
+       
         super(ADIInstruction, self).__call__(*args, **kwargs)
 
 class ANAInstruction(Instruction):
@@ -142,7 +215,26 @@ class DAAInstruction(Instruction):
         super(DAAInstruction, self).__call__(*args, **kwargs)
 
 class DADInstruction(Instruction):
+    def __init__(self, cpu, register_pair):
+        super(DADInstruction, self).__init__(cpu)
+        self._register_pair = register_pair
+
     def __call__(self, *args, **kwargs):
+        if self._register_pair == DRegID.SP:
+            self._cpu.registers.increment_pair(
+                DRegID.HL, 
+                self._cpu.stack_pointer
+            )
+        else:
+            self._cpu.registers.increment_pair(
+                DRegID.HL, 
+                self._cpu.registers.get_pair(self._register_pair)
+            )
+
+        self._cpu.condition_flags.cy = (
+            self._cpu.registers.get_pair(DRegID.HL) > 0xff
+        )
+
         super(DADInstruction, self).__call__(*args, **kwargs)
 
 class DCRInstruction(Instruction):
@@ -150,7 +242,16 @@ class DCRInstruction(Instruction):
         super(DCRInstruction, self).__call__(*args, **kwargs)
 
 class DCXInstruction(Instruction):
+    def __init__(self, cpu, register_pair):
+        super(DCXInstruction, self).__init__(cpu)
+        self._register_pair = register_pair
+
     def __call__(self, *args, **kwargs):
+        if self._register_pair == DRegID.SP:
+            self._cpu.sp -= 1
+        else:
+            self._cpu.registers.decrement_pair(self._register_pair, 1)
+
         super(DCXInstruction, self).__call__(*args, **kwargs)
 
 class DIInstruction(Instruction):
@@ -178,7 +279,16 @@ class INRInstruction(Instruction):
         super(INRInstruction, self).__call__(*args, **kwargs)
 
 class INXInstruction(Instruction):
+    def __init__(self, cpu, register_pair):
+        super(INXInstruction, self).__init__(cpu)
+        self._register_pair = register_pair
+
     def __call__(self, *args, **kwargs):
+        if self._register_pair == DRegID.SP:
+            self._cpu.stack_pointer += 1
+        else:
+            self._cpu.registers.increment_pair(self._register_pair, 1)
+
         super(INXInstruction, self).__call__(*args, **kwargs)
 
 class JCInstruction(Instruction):
@@ -386,15 +496,49 @@ class RZInstruction(Instruction):
         super(RZInstruction, self).__call__(*args, **kwargs)
 
 class SBBInstruction(Instruction):
+    def __init__(self, cpu, register):
+        super(SBBInstruction, self).__init__(cpu)
+
+        if register != DRegID.M:
+            self._subtrahend = self._cpu.registers.get(register)
+        else:
+            address = self._cpu.registers.get_pair(DRegID.HL)
+            self._subtrahend = self._cpu.ram.read(address)
+ 
     def __call__(self, *args, **kwargs):
+        answer = (
+            self._cpu.registers.get(RegID.A) - 
+            self._subtrahend - 
+            self._cpu.condition_flags.cy
+        )
+
+        self._cpu.condition_flags.z = bool(answer)
+        self._cpu.condition_flags.s = sign_bit(answer)
+        self._cpu.condition_flags.cy = answer < 0x00
+        self._cpu.p = parity_bit(answer)
+        self._cpu.registers.set(RegID.A, answer)
+ 
         super(SBBInstruction, self).__call__(*args, **kwargs)
 
 class SBIInstruction(Instruction):
     def __init__(self, *args, **kwargs):
         super(SBIInstruction, self).__init__(*args, **kwargs)
         self._size = 2
-
+    
     def __call__(self, *args, **kwargs):
+        immediate = self._cpu.getNextByte()
+        answer = (
+            self._cpu.registers.get(RegID.A) - 
+            immediate - 
+            self._cpu.condition_flags.cy
+        )
+
+        self._cpu.condition_flags.z = bool(answer)
+        self._cpu.condition_flags.s = sign_bit(answer)
+        self._cpu.condition_flags.cy = answer < 0x00
+        self._cpu.p = parity_bit(answer)
+        self._cpu.registers.set(RegID.A, answer)
+
         super(SBIInstruction, self).__call__(*args, **kwargs)
 
 class SHLDInstruction(Instruction):
@@ -426,15 +570,44 @@ class STCInstruction(Instruction):
         super(STCInstruction, self).__call__(*args, **kwargs)
 
 class SUBInstruction(Instruction):
+    def __init__(self, cpu, register):
+        super(SUBInstruction, self).__init__(cpu)
+
+        if register != DRegID.M:
+            self._subtrahend = self._cpu.registers.get(register)
+        else:
+            address = self._cpu.registers.get_pair(DRegID.HL)
+            self._subtrahend = self._cpu.ram.read(address)
+ 
     def __call__(self, *args, **kwargs):
+        answer = (
+            self._cpu.registers.get(RegID.A) - 
+            self._subtrahend
+        )
+
+        self._cpu.condition_flags.z = bool(answer)
+        self._cpu.condition_flags.s = sign_bit(answer)
+        self._cpu.condition_flags.cy = answer < 0x00
+        self._cpu.p = parity_bit(answer)
+        self._cpu.registers.set(RegID.A, answer)
+
         super(SUBInstruction, self).__call__(*args, **kwargs)
 
 class SUIInstruction(Instruction):
     def __init__(self, *args, **kwargs):
         super(SUIInstruction, self).__init__(*args, **kwargs)
         self._size = 2
-
+    
     def __call__(self, *args, **kwargs):
+        immediate = self._cpu.getNextByte()
+        answer = self._cpu.registers.get(RegID.A) - immediate
+
+        self._cpu.condition_flags.z = bool(answer)
+        self._cpu.condition_flags.s = sign_bit(answer)
+        self._cpu.condition_flags.cy = answer < 0x00
+        self._cpu.p = parity_bit(answer)
+        self._cpu.registers.set(RegID.A, answer)
+
         super(SUIInstruction, self).__call__(*args, **kwargs)
 
 class XCHGInstruction(Instruction):
