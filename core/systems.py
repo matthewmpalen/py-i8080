@@ -5,8 +5,6 @@ import logging
 from .cpu.cpus import CPU
 
 class Intel8080System(object):
-    logging.basicConfig(level=logging.WARNING, filename='logs/py-i8080.py.log', 
-            filemode='w')
     logger = logging.getLogger('Intel8080System')
 
     def __init__(self, filename):
