@@ -149,6 +149,7 @@ class CALLInstruction(Instruction):
 
     def __call__(self, *args, **kwargs):
         Instruction.logger.info(self)
+        # Return address is after current instruction
         ret = self._cpu.get_program_counter() + self._size
         self._cpu.ram.write_double_byte(self._cpu.get_stack_pointer(), ret)
         self._cpu.decrement_stack_pointer(2)
@@ -725,9 +726,16 @@ class RRCInstruction(Instruction):
     def __str__(self):
         return 'RRC'
 
-class RSTInstruction(Instruction):
+class RSTInstruction(CALLInstruction):
+    def __init__(self, cpu, id):
+        super(CALLInstruction, self).__init__(cpu)
+        self._id = id
+
     def __call__(self, *args, **kwargs):
         super(RSTInstruction, self).__call__(*args, **kwargs)
+        # Overwrite program counter
+        address = self._id * 0x8
+        self._cpu.set_program_counter(address)
 
     def __str__(self):
         return 'RST'
