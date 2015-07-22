@@ -348,8 +348,9 @@ class CPU(Thread):
 
     def run(self):
         print('Running CPU')
-        while True:
-            self._execute(self._program_counter)
+        while self._program_counter < len(self._data):
+            opcode = self._data[self._program_counter]
+            self._execute(opcode)
             CPU.logger.info(
                 '\na={0:x}, b={1:x}, c={2:x}, d={3:x}, e={4:x}, h={5:x}, l={6:x}\ns={7}, z={8}, cy={9}, p={10}'.format(
                 self.registers.get(RegID.A), 
