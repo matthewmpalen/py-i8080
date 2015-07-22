@@ -748,7 +748,7 @@ class SBIInstruction(Instruction):
         self._size = 2
     
     def __call__(self, *args, **kwargs):
-        immediate = self._cpu.getNextByte()
+        immediate = self._cpu.get_next_byte()
         answer = (
             self._cpu.registers.get(RegID.A) - 
             immediate - 
