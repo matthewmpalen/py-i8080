@@ -148,29 +148,33 @@ class CALLInstruction(Instruction):
         self._size = 3
 
     def __call__(self, *args, **kwargs):
-        super(CALLInstruction, self).__call__(*args, **kwargs)
+        Instruction.logger.info(self)
+        ret = self._cpu.get_program_counter() + self._size
+        self._cpu.ram.write_double_byte(self._cpu.get_stack_pointer(), ret)
+        self._cpu.decrement_stack_pointer(2)
+
+        address = self._cpu.get_next_double_byte()
+        self._cpu.set_program_counter(address)
 
     def __str__(self):
         return 'CALL'
 
-class CCInstruction(Instruction):
-    def __init__(self, *args, **kwargs):
-        super(CCInstruction, self).__init__(*args, **kwargs)
-        self._size = 3
-
+class CCInstruction(CALLInstruction):
     def __call__(self, *args, **kwargs):
-        super(CCInstruction, self).__call__(*args, **kwargs)
+        if self._cpu.condition_flags.cy:
+            super(CCInstruction, self).__call__(*args, **kwargs)
+        else:
+            super(CALLInstruction, self).__call__(*args, **kwargs)
 
     def __str__(self):
         return 'CC'
 
-class CMInstruction(Instruction):
-    def __init__(self, *args, **kwargs):
-        super(CMInstruction, self).__init__(*args, **kwargs)
-        self._size = 3
-
+class CMInstruction(CALLInstruction):
     def __call__(self, *args, **kwargs):
-        super(CMInstruction, self).__call__(*args, **kwargs)
+        if self._cpu.condition_flags.s:
+            super(CMInstruction, self).__call__(*args, **kwargs)
+        else:
+            super(CALLInstruction, self).__call__(*args, **kwargs)
 
     def __str__(self):
         return 'CM'
@@ -196,46 +200,42 @@ class CMPInstruction(Instruction):
     def __str__(self):
         return 'CMP'
 
-class CNCInstruction(Instruction):
-    def __init__(self, *args, **kwargs):
-        super(CNCInstruction, self).__init__(*args, **kwargs)
-        self._size = 3
-    
+class CNCInstruction(CALLInstruction):
     def __call__(self, *args, **kwargs):
-        super(CNCInstruction, self).__call__(*args, **kwargs)
+        if not self._cpu.condition_flags.cy:
+            super(CNCInstruction, self).__call__(*args, **kwargs)
+        else:
+            super(CALLInstruction, self).__call__(*args, **kwargs)
 
     def __str__(self):
         return 'CNC'
 
-class CNZInstruction(Instruction):
-    def __init__(self, *args, **kwargs):
-        super(CNZInstruction, self).__init__(*args, **kwargs)
-        self._size = 3
-    
+class CNZInstruction(CALLInstruction):
     def __call__(self, *args, **kwargs):
-        super(CNZInstruction, self).__call__(*args, **kwargs)
+        if not self._cpu.condition_flags.z:
+            super(CNZInstruction, self).__call__(*args, **kwargs)
+        else:
+            super(CALLInstruction, self).__call__(*args, **kwargs)
 
     def __str__(self):
         return 'CNZ'
 
-class CPInstruction(Instruction):
-    def __init__(self, *args, **kwargs):
-        super(CPInstruction, self).__init__(*args, **kwargs)
-        self._size = 3
-    
+class CPInstruction(CALLInstruction):
     def __call__(self, *args, **kwargs):
-        super(CPInstruction, self).__call__(*args, **kwargs)
+        if not self._cpu.condition_flags.s:
+            super(CPInstruction, self).__call__(*args, **kwargs)
+        else:
+            super(CALLInstruction, self).__call__(*args, **kwargs)
 
     def __str__(self):
         return 'CP'
 
-class CPEInstruction(Instruction):
-    def __init__(self, *args, **kwargs):
-        super(CPEInstruction, self).__init__(*args, **kwargs)
-        self._size = 3
-    
+class CPEInstruction(CALLInstruction):
     def __call__(self, *args, **kwargs):
-        super(CPEInstruction, self).__call__(*args, **kwargs)
+        if self._cpu.condition_flags.p:
+            super(CPEInstruction, self).__call__(*args, **kwargs)
+        else:
+            super(CALLInstruction, self).__call__(*args, **kwargs)
 
     def __str__(self):
         return 'CPE'
@@ -251,24 +251,22 @@ class CPIInstruction(Instruction):
     def __str__(self):
         return 'CPI'
 
-class CPOInstruction(Instruction):
-    def __init__(self, *args, **kwargs):
-        super(CPOInstruction, self).__init__(*args, **kwargs)
-        self._size = 3
-    
+class CPOInstruction(CALLInstruction):
     def __call__(self, *args, **kwargs):
-        super(CPOInstruction, self).__call__(*args, **kwargs)
+        if not self._cpu.condition_flags.p:
+            super(CPOInstruction, self).__call__(*args, **kwargs)
+        else:
+            super(CALLInstruction, self).__call__(*args, **kwargs)
 
     def __str__(self):
         return 'CPO'
 
-class CZInstruction(Instruction):
-    def __init__(self, *args, **kwargs):
-        super(CZInstruction, self).__init__(*args, **kwargs)
-        self._size = 3
- 
+class CZInstruction(CALLInstruction):
     def __call__(self, *args, **kwargs):
-        super(CZInstruction, self).__call__(*args, **kwargs)
+        if self._cpu.condition_flags.z:
+            super(CZInstruction, self).__call__(*args, **kwargs)
+        else:
+            super(CALLInstruction, self).__call__(*args, **kwargs)
 
     def __str__(self):
         return 'CZ'
@@ -408,38 +406,6 @@ class INXInstruction(Instruction):
     def __str__(self):
         return 'INX'
 
-class JCInstruction(Instruction):
-    def __init__(self, *args, **kwargs):
-        super(JCInstruction, self).__init__(*args, **kwargs)
-        self._size = 3
-
-    def __call__(self, *args, **kwargs):
-        if self._cpu.condition_flags.cy:
-            Instruction.logger.info(self)
-            address = self._cpu.get_next_double_byte()
-            self._cpu.set_program_counter(address)
-        else:
-            super(JCInstruction, self).__call__(*args, **kwargs)
-
-    def __str__(self):
-        return 'JC'
-
-class JMInstruction(Instruction):
-    def __init__(self, *args, **kwargs):
-        super(JMInstruction, self).__init__(*args, **kwargs)
-        self._size = 3
-    
-    def __call__(self, *args, **kwargs):
-        if self._cpu.condition_flags.s:
-            Instruction.logger.info(self)
-            address = self._cpu.get_next_double_byte()
-            self._cpu.set_program_counter(address)
-        else:
-            super(JMInstruction, self).__call__(*args, **kwargs)
-
-    def __str__(self):
-        return 'JM'
-
 class JMPInstruction(Instruction):
     def __init__(self, *args, **kwargs):
         super(JMPInstruction, self).__init__(*args, **kwargs)
@@ -453,98 +419,82 @@ class JMPInstruction(Instruction):
     def __str__(self):
         return 'JMP'
 
-class JNCInstruction(Instruction):
-    def __init__(self, *args, **kwargs):
-        super(JNCInstruction, self).__init__(*args, **kwargs)
-        self._size = 3
- 
+class JCInstruction(JMPInstruction):
+    def __call__(self, *args, **kwargs):
+        if self._cpu.condition_flags.cy:
+            super(JCInstruction, self).__call__(*args, **kwargs)
+        else:
+            super(JMPInstruction, self).__call__(*args, **kwargs)
+
+    def __str__(self):
+        return 'JC'
+
+class JMInstruction(JMPInstruction):
+    def __call__(self, *args, **kwargs):
+        if self._cpu.condition_flags.s:
+            super(JMInstruction, self).__call__(*args, **kwargs)
+        else:
+            super(JMPInstruction, self).__call__(*args, **kwargs)
+
+    def __str__(self):
+        return 'JM'
+
+class JNCInstruction(JMPInstruction):
     def __call__(self, *args, **kwargs):
         if not self._cpu.condition_flags.cy:
-            Instruction.logger.info(self)
-            address = self._cpu.get_next_double_byte()
-            self._cpu.set_program_counter(address)
-        else:
             super(JNCInstruction, self).__call__(*args, **kwargs)
+        else:
+            super(JMPInstruction, self).__call__(*args, **kwargs)
 
     def __str__(self):
         return 'JNC'
 
-class JNZInstruction(Instruction):
-    def __init__(self, *args, **kwargs):
-        super(JNZInstruction, self).__init__(*args, **kwargs)
-        self._size = 3
-
+class JNZInstruction(JMPInstruction):
     def __call__(self, *args, **kwargs):
         if not self._cpu.condition_flags.z:
-            Instruction.logger.info(self)
-            address = self._cpu.get_next_double_byte()
-            self._cpu.set_program_counter(address)
-        else:
             super(JNZInstruction, self).__call__(*args, **kwargs)
+        else:
+            super(JMPInstruction, self).__call__(*args, **kwargs)
 
     def __str__(self):
         return 'JNZ'
 
-class JPInstruction(Instruction):
-    def __init__(self, *args, **kwargs):
-        super(JPInstruction, self).__init__(*args, **kwargs)
-        self._size = 3
- 
+class JPInstruction(JMPInstruction):
     def __call__(self, *args, **kwargs):
         if not self._cpu.condition_flags.s:
-            Instruction.logger.info(self)
-            address = self._cpu.get_next_double_byte()
-            self._cpu.set_program_counter(address)
-        else:
             super(JPInstruction, self).__call__(*args, **kwargs)
+        else:
+            super(JMPInstruction, self).__call__(*args, **kwargs)
 
     def __str__(self):
         return 'JP'
 
-class JPEInstruction(Instruction):
-    def __init__(self, *args, **kwargs):
-        super(JPEInstruction, self).__init__(*args, **kwargs)
-        self._size = 3
- 
+class JPEInstruction(JMPInstruction):
     def __call__(self, *args, **kwargs):
         if self._cpu.condition_flags.p:
-            Instruction.logger.info(self)
-            address = self._cpu.get_next_double_byte()
-            self._cpu.set_program_counter(address)
-        else:
             super(JPEInstruction, self).__call__(*args, **kwargs)
+        else:
+            super(JMPInstruction, self).__call__(*args, **kwargs)
 
     def __str__(self):
         return 'JPE'
 
-class JPOInstruction(Instruction):
-    def __init__(self, *args, **kwargs):
-        super(JPOInstruction, self).__init__(*args, **kwargs)
-        self._size = 3
-
+class JPOInstruction(JMPInstruction):
     def __call__(self, *args, **kwargs):
         if not self._cpu.condition_flags.p:
-            Instruction.logger.info(self)
-            address = self._cpu.get_next_double_byte()
-            self._cpu.set_program_counter(address)
-        else:
             super(JPOInstruction, self).__call__(*args, **kwargs)
+        else:
+            super(JMPInstruction, self).__call__(*args, **kwargs)
 
     def __str__(self):
         return 'JPO'
 
-class JZInstruction(Instruction):
-    def __init__(self, *args, **kwargs):
-        super(JZInstruction, self).__init__(*args, **kwargs)
-        self._size = 3
- 
+class JZInstruction(JMPInstruction):
     def __call__(self, *args, **kwargs):
         if self._cpu.condition_flags.z:
-            Instruction.logger.info(self)
-            address = self._cpu.get_next_double_byte()
-            self._cpu.set_program_counter(address)
-        else:
             super(JZInstruction, self).__call__(*args, **kwargs)
+        else:
+            super(JMPInstruction, self).__call__(*args, **kwargs)
 
     def __str__(self):
         return 'JZ'
@@ -645,7 +595,9 @@ class OUTInstruction(Instruction):
 
 class PCHLInstruction(Instruction):
     def __call__(self, *args, **kwargs):
-        super(PCHLInstruction, self).__call__(*args, **kwargs)
+        Instruction.logger.info(self)
+        address = self._cpu.get_pair(DRegID.HL)
+        self._cpu.set_program_counter(address)
 
     def __str__(self):
         return 'PCHL'
@@ -678,19 +630,26 @@ class RARInstruction(Instruction):
     def __str__(self):
         return 'RAR'
 
-class RCInstruction(Instruction):
-    def __call__(self, *args, **kwargs):
-        super(RCInstruction, self).__call__(*args, **kwargs)
-
-    def __str__(self):
-        return 'RC'
-
 class RETInstruction(Instruction):
     def __call__(self, *args, **kwargs):
-        super(RETInstruction, self).__call__(*args, **kwargs)
+        address = self._cpu.ram.read_double_byte(
+            self._cpu.get_stack_pointer()
+        ) 
+        self._cpu.set_program_counter(address)
+        self._cpu.increment_stack_pointer(2)
 
     def __str__(self):
         return 'RET'
+
+class RCInstruction(RETInstruction):
+    def __call__(self, *args, **kwargs):
+        if self._cpu.condition_flags.cy:
+            super(RCInstruction, self).__call__(*args, **kwargs)
+        else:
+            super(RETInstruction, self).__call__(*args, **kwargs)
+
+    def __str__(self):
+        return 'RC'
 
 class RLCInstruction(Instruction):
     def __call__(self, *args, **kwargs):
@@ -699,44 +658,62 @@ class RLCInstruction(Instruction):
     def __str__(self):
         return 'RLC'
 
-class RMInstruction(Instruction):
+class RMInstruction(RETInstruction):
     def __call__(self, *args, **kwargs):
-        super(RMInstruction, self).__call__(*args, **kwargs)
+        if self._cpu.condition_flags.s:
+            super(RMInstruction, self).__call__(*args, **kwargs)
+        else:
+            super(RETInstruction, self).__call__(*args, **kwargs)
 
     def __str__(self):
         return 'RM'
 
-class RNCInstruction(Instruction):
+class RNCInstruction(RETInstruction):
     def __call__(self, *args, **kwargs):
-        super(RNCInstruction, self).__call__(*args, **kwargs)
+        if not self._cpu.condition_flags.cy:
+            super(RNCInstruction, self).__call__(*args, **kwargs)
+        else:
+            super(RETInstruction, self).__call__(*args, **kwargs)
 
     def __str__(self):
         return 'RNC'
 
-class RNZInstruction(Instruction):
+class RNZInstruction(RETInstruction):
     def __call__(self, *args, **kwargs):
-        super(RNZInstruction, self).__call__(*args, **kwargs)
+        if not self._cpu.condition_flags.z:
+            super(RNZInstruction, self).__call__(*args, **kwargs)
+        else:
+            super(RETInstruction, self).__call__(*args, **kwargs)
 
     def __str__(self):
         return 'RNZ'
 
-class RPInstruction(Instruction):
+class RPInstruction(RETInstruction):
     def __call__(self, *args, **kwargs):
-        super(RPInstruction, self).__call__(*args, **kwargs)
+        if not self._cpu.condition_flags.s:
+            super(RPInstruction, self).__call__(*args, **kwargs)
+        else:
+            super(RETInstruction, self).__call__(*args, **kwargs)
 
     def __str__(self):
         return 'RP'
 
-class RPEInstruction(Instruction):
+class RPEInstruction(RETInstruction):
     def __call__(self, *args, **kwargs):
-        super(RPEInstruction, self).__call__(*args, **kwargs)
+        if self._cpu.condition_flags.p:
+            super(RPEInstruction, self).__call__(*args, **kwargs)
+        else:
+            super(RETInstruction, self).__call__(*args, **kwargs)
 
     def __str__(self):
         return 'RPE'
 
-class RPOInstruction(Instruction):
+class RPOInstruction(RETInstruction):
     def __call__(self, *args, **kwargs):
-        super(RPOInstruction, self).__call__(*args, **kwargs)
+        if not self._cpu.condition_flags.p:
+            super(RPOInstruction, self).__call__(*args, **kwargs)
+        else:
+            super(RETInstruction, self).__call__(*args, **kwargs)
 
     def __str__(self):
         return 'RPO'
@@ -755,9 +732,12 @@ class RSTInstruction(Instruction):
     def __str__(self):
         return 'RST'
 
-class RZInstruction(Instruction):
+class RZInstruction(RETInstruction):
     def __call__(self, *args, **kwargs):
-        super(RZInstruction, self).__call__(*args, **kwargs)
+        if self._cpu.condition_flags.z:
+            super(RZInstruction, self).__call__(*args, **kwargs)
+        else:
+            super(RETInstruction, self).__call__(*args, **kwargs)
 
     def __str__(self):
         return 'RZ'
