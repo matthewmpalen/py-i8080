@@ -57,7 +57,7 @@ class ADDInstruction(Instruction):
             addend = self._cpu.registers.get(self._register)
         else:
             address = self._cpu.registers.get_pair(DRegID.HL)
-            addend = self._cpu.ram.read(address)
+            addend = self._cpu.ram.read_double_byte(address)
 
         flags = self._cpu.registers.increment(
             RegID.A, 
@@ -84,7 +84,7 @@ class ADCInstruction(Instruction):
             addend = self._cpu.registers.get(register)
         else:
             address = self._cpu.registers.get_pair(DRegID.HL)
-            addend = self._cpu.ram.read(address)
+            addend = self._cpu.ram.read_double_byte(address)
 
         flags = self._cpu.registers.increment(
             RegID.A, 
@@ -752,7 +752,7 @@ class SBBInstruction(Instruction):
             subtrahend = self._cpu.registers.get(self._register)
         else:
             address = self._cpu.registers.get_pair(DRegID.HL)
-            subtrahend = self._cpu.ram.read(address)
+            subtrahend = self._cpu.ram.read_double_byte(address)
  
         flags = self._cpu.registers.decrement(
             RegID.A, 
@@ -845,7 +845,7 @@ class SUBInstruction(Instruction):
             subtrahend = self._cpu.registers.get(self._register)
         else:
             address = self._cpu.registers.get_pair(DRegID.HL)
-            subtrahend = self._cpu.ram.read(address)
+            subtrahend = self._cpu.ram.read_double_byte(address)
  
         flags = self._cpu.registers.decrement(
             RegID.A, 
