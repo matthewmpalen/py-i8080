@@ -21,7 +21,7 @@ class CPU(Thread):
         self.registers = Registers()
         self.condition_flags = ConditionFlags()
         self.ram = Memory()
-        self._stack_pointer = uint16(0)
+        self._stack_pointer = uint16(0xffff)
         self._program_counter = uint16(0)
         self._data = bytearray(10)
 
@@ -314,7 +314,8 @@ class CPU(Thread):
     def get_next_double_byte(self):
         start = self._program_counter + uint16(1)
         end = start + uint16(2)
-        return struct.unpack('<H', self._data[start:end])[0]
+        return int.from_bytes(self._data[start:end], byteorder='little', 
+            signed=False)
 
     def get_stack_pointer(self):
         return self._stack_pointer
@@ -330,6 +331,12 @@ class CPU(Thread):
             raise ValueError('Must be a positive value')
 
         self._stack_pointer -= uint16(value)
+
+    def get_program_counter(self):
+        return self._program_counter
+
+    def set_program_counter(self, value):
+        self._program_counter = uint16(value)
 
     def increment_program_counter(self, value):
         if value < 0:
@@ -351,8 +358,13 @@ class CPU(Thread):
         while self._program_counter < len(self._data):
             opcode = self._data[self._program_counter]
             self._execute(opcode)
+            msg = """
+a={0:x}, b={1:x}, c={2:x}, d={3:x}, e={4:x}, h={5:x}, l={6:x}
+s={7}, z={8}, cy={9}, p={10}
+sp={11:x}, pc={12:x}"""
+
             CPU.logger.info(
-                '\na={0:x}, b={1:x}, c={2:x}, d={3:x}, e={4:x}, h={5:x}, l={6:x}\ns={7}, z={8}, cy={9}, p={10}'.format(
+                msg.format(
                 self.registers.get(RegID.A), 
                 self.registers.get(RegID.B), 
                 self.registers.get(RegID.C), 
@@ -363,6 +375,8 @@ class CPU(Thread):
                 self.condition_flags.s, 
                 self.condition_flags.z, 
                 self.condition_flags.cy, 
-                self.condition_flags.p)
+                self.condition_flags.p, 
+                self._stack_pointer, 
+                self._program_counter)
             )
 
