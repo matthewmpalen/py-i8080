@@ -28,12 +28,13 @@ class ACIInstruction(Instruction):
     def __init__(self, *args, **kwargs):
         super(ACIInstruction, self).__init__(*args, **kwargs)
         self._size = 2
-        self._immediate = self._cpu.get_next_byte()
-    
+            
     def __call__(self, *args, **kwargs):
+        immediate = self._cpu.get_next_byte()
+
         flags = self._cpu.registers.increment(
             RegID.A, 
-            (self._immediate + self._cpu.condition_flags.cy)
+            (immediate + self._cpu.condition_flags.cy)
         )
 
         self._cpu.condition_flags.s = flags['s']
@@ -49,17 +50,18 @@ class ACIInstruction(Instruction):
 class ADDInstruction(Instruction):
     def __init__(self, cpu, register):
         super(ADDInstruction, self).__init__(cpu)
-
-        if register != DRegID.M:
-            self._addend = self._cpu.registers.get(register)
-        else:
-            address = self._cpu.registers.get_pair(DRegID.HL)
-            self._addend = self._cpu.ram.read(address)
+        self._register = register
     
     def __call__(self, *args, **kwargs):
+        if self._register != DRegID.M:
+            addend = self._cpu.registers.get(self._register)
+        else:
+            address = self._cpu.registers.get_pair(DRegID.HL)
+            addend = self._cpu.ram.read(address)
+
         flags = self._cpu.registers.increment(
             RegID.A, 
-            self._addend
+            addend
         )
 
         self._cpu.condition_flags.s = flags['s']
@@ -75,17 +77,18 @@ class ADDInstruction(Instruction):
 class ADCInstruction(Instruction):
     def __init__(self, cpu, register):
         super(ADCInstruction, self).__init__(cpu)
-
-        if register != 'm':
-            self._addend = self._cpu.registers.get(register)
-        else:
-            address = self._cpu.registers.get_pair(DRegID.HL)
-            self._addend = self._cpu.ram.read(address)
+        self._register = register
 
     def __call__(self, *args, **kwargs):
+        if register != 'm':
+            addend = self._cpu.registers.get(register)
+        else:
+            address = self._cpu.registers.get_pair(DRegID.HL)
+            addend = self._cpu.ram.read(address)
+
         flags = self._cpu.registers.increment(
             RegID.A, 
-            (self._addend + self._cpu.condition_flags.cy)
+            (addend + self._cpu.condition_flags.cy)
         )
 
         self._cpu.condition_flags.s = flags['s']
@@ -102,12 +105,13 @@ class ADIInstruction(Instruction):
     def __init__(self, *args, **kwargs):
         super(ADIInstruction, self).__init__(*args, **kwargs)
         self._size = 2
-        self._immediate = self._cpu.get_next_byte()
-    
+            
     def __call__(self, *args, **kwargs):
+        immediate = self._cpu.get_next_byte()
+
         flags = self._cpu.registers.increment(
             RegID.A, 
-            self._immediate
+            immediate
         )
 
         self._cpu.condition_flags.s = flags['s']
@@ -410,7 +414,12 @@ class JCInstruction(Instruction):
         self._size = 3
 
     def __call__(self, *args, **kwargs):
-        super(JCInstruction, self).__call__(*args, **kwargs)
+        if self._cpu.condition_flags.cy:
+            Instruction.logger.info(self)
+            address = self._cpu.get_next_double_byte()
+            self._cpu.set_program_counter(address)
+        else:
+            super(JCInstruction, self).__call__(*args, **kwargs)
 
     def __str__(self):
         return 'JC'
@@ -421,7 +430,12 @@ class JMInstruction(Instruction):
         self._size = 3
     
     def __call__(self, *args, **kwargs):
-        super(JMInstruction, self).__call__(*args, **kwargs)
+        if self._cpu.condition_flags.s:
+            Instruction.logger.info(self)
+            address = self._cpu.get_next_double_byte()
+            self._cpu.set_program_counter(address)
+        else:
+            super(JMInstruction, self).__call__(*args, **kwargs)
 
     def __str__(self):
         return 'JM'
@@ -432,7 +446,9 @@ class JMPInstruction(Instruction):
         self._size = 3
     
     def __call__(self, *args, **kwargs):
-        super(JMPInstruction, self).__call__(*args, **kwargs)
+        Instruction.logger.info(self)
+        address = self._cpu.get_next_double_byte()
+        self._cpu.set_program_counter(address)
 
     def __str__(self):
         return 'JMP'
@@ -443,7 +459,12 @@ class JNCInstruction(Instruction):
         self._size = 3
  
     def __call__(self, *args, **kwargs):
-        super(JNCInstruction, self).__call__(*args, **kwargs)
+        if not self._cpu.condition_flags.cy:
+            Instruction.logger.info(self)
+            address = self._cpu.get_next_double_byte()
+            self._cpu.set_program_counter(address)
+        else:
+            super(JNCInstruction, self).__call__(*args, **kwargs)
 
     def __str__(self):
         return 'JNC'
@@ -454,7 +475,12 @@ class JNZInstruction(Instruction):
         self._size = 3
 
     def __call__(self, *args, **kwargs):
-        super(JNZInstruction, self).__call__(*args, **kwargs)
+        if not self._cpu.condition_flags.z:
+            Instruction.logger.info(self)
+            address = self._cpu.get_next_double_byte()
+            self._cpu.set_program_counter(address)
+        else:
+            super(JNZInstruction, self).__call__(*args, **kwargs)
 
     def __str__(self):
         return 'JNZ'
@@ -465,7 +491,12 @@ class JPInstruction(Instruction):
         self._size = 3
  
     def __call__(self, *args, **kwargs):
-        super(JPInstruction, self).__call__(*args, **kwargs)
+        if not self._cpu.condition_flags.s:
+            Instruction.logger.info(self)
+            address = self._cpu.get_next_double_byte()
+            self._cpu.set_program_counter(address)
+        else:
+            super(JPInstruction, self).__call__(*args, **kwargs)
 
     def __str__(self):
         return 'JP'
@@ -476,7 +507,12 @@ class JPEInstruction(Instruction):
         self._size = 3
  
     def __call__(self, *args, **kwargs):
-        super(JPEInstruction, self).__call__(*args, **kwargs)
+        if self._cpu.condition_flags.p:
+            Instruction.logger.info(self)
+            address = self._cpu.get_next_double_byte()
+            self._cpu.set_program_counter(address)
+        else:
+            super(JPEInstruction, self).__call__(*args, **kwargs)
 
     def __str__(self):
         return 'JPE'
@@ -487,7 +523,12 @@ class JPOInstruction(Instruction):
         self._size = 3
 
     def __call__(self, *args, **kwargs):
-        super(JPOInstruction, self).__call__(*args, **kwargs)
+        if not self._cpu.condition_flags.p:
+            Instruction.logger.info(self)
+            address = self._cpu.get_next_double_byte()
+            self._cpu.set_program_counter(address)
+        else:
+            super(JPOInstruction, self).__call__(*args, **kwargs)
 
     def __str__(self):
         return 'JPO'
@@ -498,7 +539,12 @@ class JZInstruction(Instruction):
         self._size = 3
  
     def __call__(self, *args, **kwargs):
-        super(JZInstruction, self).__call__(*args, **kwargs)
+        if self._cpu.condition_flags.z:
+            Instruction.logger.info(self)
+            address = self._cpu.get_next_double_byte()
+            self._cpu.set_program_counter(address)
+        else:
+            super(JZInstruction, self).__call__(*args, **kwargs)
 
     def __str__(self):
         return 'JZ'
@@ -719,17 +765,18 @@ class RZInstruction(Instruction):
 class SBBInstruction(Instruction):
     def __init__(self, cpu, register):
         super(SBBInstruction, self).__init__(cpu)
+        self._register = register
 
-        if register != DRegID.M:
-            self._subtrahend = self._cpu.registers.get(register)
+    def __call__(self, *args, **kwargs):
+        if self._register != DRegID.M:
+            subtrahend = self._cpu.registers.get(self._register)
         else:
             address = self._cpu.registers.get_pair(DRegID.HL)
-            self._subtrahend = self._cpu.ram.read(address)
+            subtrahend = self._cpu.ram.read(address)
  
-    def __call__(self, *args, **kwargs):
         flags = self._cpu.registers.decrement(
             RegID.A, 
-            (self._subtrahend + self._cpu.condition_flags.cy)
+            (subtrahend + self._cpu.condition_flags.cy)
         )
 
         self._cpu.condition_flags.s = flags['s']
@@ -749,11 +796,6 @@ class SBIInstruction(Instruction):
     
     def __call__(self, *args, **kwargs):
         immediate = self._cpu.get_next_byte()
-        answer = (
-            self._cpu.registers.get(RegID.A) - 
-            immediate - 
-            self._cpu.condition_flags.cy
-        )
 
         flags = self._cpu.registers.decrement(
             RegID.A, 
@@ -816,17 +858,18 @@ class STCInstruction(Instruction):
 class SUBInstruction(Instruction):
     def __init__(self, cpu, register):
         super(SUBInstruction, self).__init__(cpu)
+        self._register = register
 
-        if register != DRegID.M:
-            self._subtrahend = self._cpu.registers.get(register)
+    def __call__(self, *args, **kwargs):
+        if self._register != DRegID.M:
+            subtrahend = self._cpu.registers.get(self._register)
         else:
             address = self._cpu.registers.get_pair(DRegID.HL)
-            self._subtrahend = self._cpu.ram.read(address)
+            subtrahend = self._cpu.ram.read(address)
  
-    def __call__(self, *args, **kwargs):
         flags = self._cpu.registers.decrement(
             RegID.A, 
-            self._subtrahend
+            subtrahend
         )
 
         self._cpu.condition_flags.s = flags['s']
@@ -843,12 +886,13 @@ class SUIInstruction(Instruction):
     def __init__(self, *args, **kwargs):
         super(SUIInstruction, self).__init__(*args, **kwargs)
         self._size = 2
-        self._immediate = self._cpu.get_next_byte()
-    
+            
     def __call__(self, *args, **kwargs):
+        immediate = self._cpu.get_next_byte()
+
         flags = self._cpu.registers.decrement(
             RegID.A, 
-            self._immediate
+            immediate
         )
 
         self._cpu.condition_flags.s = flags['s']
