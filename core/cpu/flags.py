@@ -3,7 +3,7 @@ def get_bit(value, index):
     return (0 != (value & (1 << index)))
 
 def zero_bit(value):
-    return bool(value)
+    return not bool(value)
 
 def sign_bit(value):
     return get_bit(value, 7)
