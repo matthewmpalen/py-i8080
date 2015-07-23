@@ -10,6 +10,9 @@ class Intel8080System(object):
     def __init__(self, filename):
         self._CPU = CPU()
 
+        if not filename:
+            return
+
         try:
             with open(filename, 'rb') as f:
                 self._CPU.load(f.read())
