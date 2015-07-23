@@ -6,6 +6,7 @@ from numpy import int16, uint16
 
 # Local
 from .registers import RegID, DRegID
+from .registers import flags as fl
 
 class UnhandledInstructionError(Exception):
     pass
@@ -125,7 +126,24 @@ class ADIInstruction(Instruction):
         return 'ADI'
 
 class ANAInstruction(Instruction):
+    def __init__(self, cpu, register):
+        super(ANAInstruction, self).__init__(cpu)
+        self._register = register
+
     def __call__(self, *args, **kwargs):
+        if self._register != DRegID.M:
+            operand = self._cpu.registers.get(self._register)
+        else:
+            address = self._cpu.registers.get_pair(DRegID.HL)
+            operand = self._cpu.ram.read_double_byte(address)
+
+        flags = self._cpu.registers.and_(RegID.A, operand)
+
+        self._cpu.condition_flags.s = flags['s']
+        self._cpu.condition_flags.z = flags['z']
+        self._cpu.condition_flags.cy = False
+        self._cpu.condition_flags.p = flags['p']
+
         super(ANAInstruction, self).__call__(*args, **kwargs)
 
     def __str__(self):
@@ -137,6 +155,14 @@ class ANIInstruction(Instruction):
         self._size = 2
 
     def __call__(self, *args, **kwargs):
+        immediate = self._cpu.get_next_byte()
+        flags = self._cpu.registers.and_(RegID.A, immediate)
+
+        self._cpu.condition_flags.s = flags['s']
+        self._cpu.condition_flags.z = flags['z']
+        self._cpu.condition_flags.cy = False
+        self._cpu.condition_flags.p = flags['p']
+
         super(ANIInstruction, self).__call__(*args, **kwargs)
 
     def __str__(self):
@@ -182,6 +208,8 @@ class CMInstruction(CALLInstruction):
 
 class CMAInstruction(Instruction):
     def __call__(self, *args, **kwargs):
+        self._cpu.registers.not_(RegID.A)
+
         super(CMAInstruction, self).__call__(*args, **kwargs)
 
     def __str__(self):
@@ -195,7 +223,25 @@ class CMCInstruction(Instruction):
         return 'CMC'
 
 class CMPInstruction(Instruction):
+    def __init__(self, cpu, register):
+        super(CMPInstruction, self).__init__(cpu)
+        self._register = register
+
     def __call__(self, *args, **kwargs):
+        if self._register != DRegID.M:
+            subtrahend = self._cpu.registers.get(self._register)
+        else:
+            address = self._cpu.registers.get_pair(DRegID.HL)
+            subtrahend = self._cpu.ram.read_double_byte(address)
+
+        answer = self._cpu.registers.get(RegID.A) - subtrahend
+        flags = fl(answer)
+
+        self._cpu.condition_flags.s = flags['s']
+        self._cpu.condition_flags.z = flags['z']
+        self._cpu.condition_flags.cy = flags['cy']
+        self._cpu.condition_flags.p = flags['p']
+
         super(CMPInstruction, self).__call__(*args, **kwargs)
 
     def __str__(self):
@@ -247,6 +293,15 @@ class CPIInstruction(Instruction):
         self._size = 2
  
     def __call__(self, *args, **kwargs):
+        immediate = self._cpu.get_next_byte()
+        answer = self._cpu.registers.get(RegID.A) - immediate
+        flags = fl(answer)
+
+        self._cpu.condition_flags.s = flags['s']
+        self._cpu.condition_flags.z = flags['z']
+        self._cpu.condition_flags.cy = flags['cy']
+        self._cpu.condition_flags.p = flags['p']
+
         super(CPIInstruction, self).__call__(*args, **kwargs)
 
     def __str__(self):
@@ -566,7 +621,24 @@ class NOPInstruction(Instruction):
         return 'NOP'
 
 class ORAInstruction(Instruction):
+    def __init__(self, cpu, register):
+        super(ORAInstruction, self).__init__(cpu)
+        self._register = register
+
     def __call__(self, *args, **kwargs):
+        if self._register != DRegID.M:
+            operand = self._cpu.registers.get(self._register)
+        else:
+            address = self._cpu.registers.get_pair(DRegID.HL)
+            operand = self._cpu.ram.read_double_byte(address)
+
+        flags = self._cpu.registers.xor_(RegID.A, operand)
+
+        self._cpu.condition_flags.s = flags['s']
+        self._cpu.condition_flags.z = flags['z']
+        self._cpu.condition_flags.cy = False
+        self._cpu.condition_flags.p = flags['p']
+
         super(ORAInstruction, self).__call__(*args, **kwargs)
 
     def __str__(self):
@@ -578,6 +650,14 @@ class ORIInstruction(Instruction):
         self._size = 2
 
     def __call__(self, *args, **kwargs):
+        immediate = self._cpu.get_next_byte()
+        flags = self._cpu.registers.or_(RegID.A, immediate)
+
+        self._cpu.condition_flags.s = flags['s']
+        self._cpu.condition_flags.z = flags['z']
+        self._cpu.condition_flags.cy = False
+        self._cpu.condition_flags.p = flags['p']
+
         super(ORIInstruction, self).__call__(*args, **kwargs)
 
     def __str__(self):
@@ -619,6 +699,8 @@ class PUSHInstruction(Instruction):
 
 class RALInstruction(Instruction):
     def __call__(self, *args, **kwargs):
+        flags = self._cpu.registers.shift_left_carry_(RegID.A)
+        self._cpu.registers.condition_flags.cy = flags['cy']
         super(RALInstruction, self).__call__(*args, **kwargs)
 
     def __str__(self):
@@ -654,6 +736,8 @@ class RCInstruction(RETInstruction):
 
 class RLCInstruction(Instruction):
     def __call__(self, *args, **kwargs):
+        flags = self._cpu.registers.shift_left_(RegID)
+        self._cpu.condition_flags.cy = flags['cy']
         super(RLCInstruction, self).__call__(*args, **kwargs)
 
     def __str__(self):
@@ -721,6 +805,8 @@ class RPOInstruction(RETInstruction):
 
 class RRCInstruction(Instruction):
     def __call__(self, *args, **kwargs):
+        flags = self._cpu.registers.shift_right_(RegID)
+        self._cpu.condition_flags.cy = flags['cy']
         super(RRCInstruction, self).__call__(*args, **kwargs)
 
     def __str__(self):
@@ -901,8 +987,26 @@ class XCHGInstruction(Instruction):
         return 'XCHG'
 
 class XRAInstruction(Instruction):
+    def __init__(self, cpu, register):
+        super(XRAInstruction, self).__init__(cpu)
+        self._register = register
+
     def __call__(self, *args, **kwargs):
+        if self._register != DRegID.M:
+            operand = self._cpu.registers.get(self._register)
+        else:
+            address = self._cpu.registers.get_pair(DRegID.HL)
+            operand = self._cpu.ram.read_double_byte(address)
+
+        flags = self._cpu.registers.xor_(RegID.A, operand)
+
+        self._cpu.condition_flags.s = flags['s']
+        self._cpu.condition_flags.z = flags['z']
+        self._cpu.condition_flags.cy = False
+        self._cpu.condition_flags.p = flags['p']
+
         super(XRAInstruction, self).__call__(*args, **kwargs)
+
 
     def __str__(self):
         return 'XRA'
@@ -913,6 +1017,14 @@ class XRIInstruction(Instruction):
         self._size = 2
 
     def __call__(self, *args, **kwargs):
+        immediate = self._cpu.get_next_byte()
+        flags = self._cpu.registers.xor_(RegID.A, immediate)
+
+        self._cpu.condition_flags.s = flags['s']
+        self._cpu.condition_flags.z = flags['z']
+        self._cpu.condition_flags.cy = False
+        self._cpu.condition_flags.p = flags['p']
+
         super(XRIInstruction, self).__call__(*args, **kwargs)
 
     def __str__(self):
