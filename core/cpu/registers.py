@@ -1,9 +1,9 @@
 # Python
 import logging
-
 from enum import IntEnum, unique
 
-from .flags import zero_bit, sign_bit, carry_bit, parity_bit
+# Local
+from .flags import get_bit, zero_bit, sign_bit, carry_bit, parity_bit
 
 @unique
 class RegID(IntEnum):
@@ -66,6 +66,122 @@ class Registers(object):
         Registers.logger.info(
             'decrement {0}: {1:x} - {2:x} = {3:x}'.format(
                 id.name, self._items[id], value, answer
+            )
+        )
+
+        self.set(id, answer)
+
+        return flags(answer)
+
+    def and_(self, id, value):
+        answer = self._items[id] & value
+
+        Registers.logger.info(
+            'and {0}: {1:x} & {2:x} = {3:x}'.format(
+                id.name, 
+                self._items[id], 
+                value, 
+                answer
+            )
+        )
+
+        self.set(id, answer)
+
+        return flags(answer)
+
+    def or_(self, id, value):
+        answer = self._items[id] | value
+
+        Registers.logger.info(
+            'and {0}: {1:x} | {2:x} = {3:x}'.format(
+                id.name, 
+                self._items[id], 
+                value, 
+                answer
+            )
+        )
+
+        self.set(id, answer)
+
+        return flags(answer)
+
+    def not_(self, id):
+        answer = self._items[id] ^ 0xff
+
+        Registers.logger.info(
+            'not {0}: {1:x} ^ 0xff = {2:x}'.format(
+                id.name, 
+                self._items[id], 
+                answer
+            )
+        )
+
+        self.set(id, answer)
+
+        return flags(answer)
+
+    def shift_left_(self, id):
+        answer = (self._items[id] << 0x01) | (self._items[id] >> 0x07)
+
+        Registers.logger.info(
+            'shift_left {0}: {1:x} << {2:x} = {3:x}'.format(
+                id.name, 
+                self._items[id], 
+                0x01, 
+                answer
+            )
+        )
+
+        self.set(id, answer)
+
+        return flags(answer)
+
+    def shift_left_carry_(self, id, cy):
+        tmp = self._items[id]
+        answer = (tmp << 0x01) | cy
+        carry = bool(get_bit(tmp, 7))
+
+        self.set(id, answer)
+
+        return {'cy': carry}
+
+    def shift_right_(self, id):
+        tmp = self._items[id]
+        answer = (tmp >> 0x01) | (tmp << 0x07)
+
+        Registers.logger.info(
+            'shift_right {0}: {1:x} >> {2:x} = {3:x}'.format(
+                id.name, 
+                self._items[id], 
+                0x01, 
+                answer
+            )
+        )
+
+        carry = bool(get_bit(tmp, 0))
+
+        self.set(id, answer)
+
+        return {'cy': carry}
+
+    def shift_right_carry_(self, id, cy):
+        tmp = self._items[id]
+        answer = (tmp >> 0x01) | (cy << 7)
+        carry = bool(get_bit(tmp, 0))
+
+        self.set(id, answer)
+
+        return {'cy': carry}
+
+    def xor_(self, id, value):
+        answer = self._items[id] ^ value
+
+        Registers.logger.info(
+            'xor {0}: {1:x} ^ {2:x} = {3:x}'.format(
+                id.name, 
+                self._items[id], 
+                value, 
+                answer
             )
         )
 
